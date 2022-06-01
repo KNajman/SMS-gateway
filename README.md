@@ -178,6 +178,8 @@ cd /var/smstools/sms/outgoing
 
 ### webové API
 
+<https://github.com/playsms/playsms>
+
 stáhneme důležité balíky pro API
 
 ```bash
