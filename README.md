@@ -56,24 +56,35 @@ abychom se k modemu pro jeho otestování připojili nainstalujeme následujíc�
 
 následně vyzkoušíme sériovou komunikaci
 
-- v případě že by nebyl vidět vstup zapneme local echo CTRL+A, CTRL+C
-
 ```bash
-picocom /dev/ttyUSB0 -b 19200 -l
-AT 
-#Modem odpoví OK pokud je v pořádku
-
-AT+CSCS?    #Modem by měl odpovědět +CSCS: "GSM", pokud ne je potřeba zadat následující příkaz
-    >AT+CSCS="GSM"  #Modem se přepne do GSM režimu
-
-AT+CMGF?    #Modem by měl odpovědět +CMGF=1, to znamená že je aktivovana SMS komunikace, pokud ne je nutné tuto komunikace aktivovat
-    >AT+CMGF=1  #Modem se přepne na SMS komunikace
-
-AT+CMGS="+420605046201"      #Testovací SMS na číslo
-> Toto je testovácí sms.  #Přidáme zprávu a potvrdíme CTRL+Z
+picocom -b 19200 -l dev/ttyUSB0
+AT  #Zařízení odpoví zda je kompatibilní
+    #V případě že by nebyl vidět vstup zapneme local echo CTRL+A, CTRL+C
+OK  #Odpověď   
+>AT+CSCS="GSM"  #Modem se přepne do GSM módu
+OK  #Odpověď   
+AT+CFUN=1   #Zapne telefoní funkcionality
+OK  #Odpověď   
+AT+CMGF=1   #Přepne GSM modem do SMS textového režimu
+OK  #Odpověď   
+AT+CMGS="+420XXXXXXXXX" #Předání telefoního čísla pro komunikaci
+> Místo pro SMS zprávu. <--- #Přidáme zprávu a potvrdíme CTRL+Z
+OK  #Odpověď   
+#Ukončíme Picocom stiskem Ctrl+A Ctrl+X
 ```
 
-ukončení picocom CTRL+A, CTRL+X
+```bash
+echo "Text SMS zpravy" | gammu --sendsms TEXT 420XXXXXXXXX
+#nebo
+gammu-smsd-inject TEXT 420XXXXXXXXX -text "Text SMS zpravy"
+
+#unicode zpráva do 160 znaků
+gammu-smsd-inject TEXT 420XXXXXXXXX -unicode -text "Příliš žluťoučký kůň úpěl ďábelské ódy"
+
+#unicode zpráva dlouhého rozsahu,¨zde 400 znaků
+echo "Příliš žluťoučký kůň úpěl ďábelské ódy" | gammu-smsd-inject TEXT 420XXXXXXXXX -len 400
+
+```
 
 jako nástroj pro odesílání SMS zpráv použijme SMStools
 
@@ -88,7 +99,9 @@ jako nástroj pro odesílání SMS zpráv použijme SMStools
 nano /etc/smsd.conf
 ```
 
-```nano
+```bash
+#Ukazkový smsd.conf pro /dev/ttyUSB0
+devices = GSM1
 incoming = /var/spool/sms/incoming
 outgoing = /var/spool/sms/outgoing
 sent = /var/spool/sms/sent
@@ -98,13 +111,18 @@ failed = /var/spool/sms/failed
 logfile = /var/log/smstools/smsd.log
 stats = /var/log/smstools/smsd_stats
 
+receive_before_send = no
+autosplit=3
+report = no
+
 #pravděpodobně bude stačit editovat pouze GSM1 sekci
 [GSM1]
 #init =
 device = /dev/ttyUSB0 #zde napsat cestu k zařízení
 incoming = yes
-baudrate = 19200
-#pin = #zde uložte pin
+baudrate = 19200 
+#baudrate = 9600 #v případě že nefunguje předchozí
+#pin = #zde uložte pin pokud SIM karta nějaký má
 
 ```
 
@@ -141,14 +159,11 @@ nano .profile
 posílání zpráv teď funguje 2 způsoby
 
 ```bash
-#1.
+#1. příkazem
 sendsms 420xxxxxxxxx 'Testovácí zpráva z SMStools'
-```
 
-vytvořením zprávy v ~var/smstools/sms/outgoing
+#2. vytvořením zprávy v ~var/smstools/sms/outgoing
 
-```bash
-#2.
 cd /var/smstools/sms/outgoing
 
  nano
@@ -158,6 +173,10 @@ cd /var/smstools/sms/outgoing
 ```
 
 ## API
+
+
+
+### webové API
 
 stáhneme důležité balíky pro API
 
@@ -304,10 +323,6 @@ PATHCONF="/home/playsms/etc"
 
 tím je API hotové
 
-```bash
-
-```
-
 ## Zdroje
 
 https://sysopstechnix.com/build-your-own-sms-gateway-using-raspberry-pi/
@@ -317,3 +332,7 @@ https://gist.github.com/kmpm/10817304
 https://www.developershome.com/sms/
 
 https://pitigala.org/2011/12/30/how-to-setup-smstools-in-debian/
+
+https://askubuntu.com/questions/37767/how-to-access-a-usb-flash-drive-from-the-terminal
+
+https://www.industrialshields.com/blog/raspberry-pi-for-industry-26/post/how-to-send-and-receive-sms-with-raspberry-pi-automation-305
